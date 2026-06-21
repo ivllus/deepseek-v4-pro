@@ -1,23 +1,55 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-  <title>DeepSeek Chat</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DeepSeek AI 助手</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="header">
-    <input type="password" id="apiKeyInput" placeholder="粘贴 DeepSeek API Key (sk-...)" autocomplete="off">
-  </div>
 
-  <div id="chat"></div>
+    <!-- 顶部导航 -->
+    <header class="header">
+        <div class="header-left">
+            <span class="logo-icon">🧠</span>
+            <span class="logo-text">DeepSeek</span>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+            <button class="clear-btn" id="clearBtn" title="清空对话">🗑️</button>
+        </div>
+    </header>
 
-  <div class="input-area">
-    <input type="text" id="msgInput" placeholder="发消息…" autofocus>
-    <button onclick="send()">发送</button>
-  </div>
+    <!-- 聊天区域 -->
+    <main class="chat-container" id="chatContainer">
+        <div class="chat-box" id="chatBox">
+            <div class="welcome-msg">
+                <div class="welcome-icon">👋</div>
+                <h2>你好，我是 DeepSeek</h2>
+                <p>随时为你解答问题，开始对话吧！</p>
+            </div>
+        </div>
+    </main>
 
-  <script src="script.js"></script>
+    <!-- 底部输入区 -->
+    <footer class="input-area">
+        <div class="input-wrapper">
+            <input 
+                type="text" 
+                id="userInput" 
+                placeholder="输入你的问题..." 
+                autocomplete="off"
+            />
+            <button id="sendBtn" class="send-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+        <div class="input-hint">按 Enter 发送 · 支持多轮对话</div>
+    </footer>
+
+    <script src="script.js"></script>
 </body>
 </html>

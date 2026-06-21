@@ -2,277 +2,208 @@
 //  配置
 // ============================================================
 const CONFIG = {
-    // ⚠️ 替换成你的 DeepSeek API Key
     API_KEY: 'sk-c2c7f7fdf13545da8656241acff333cb',
     API_URL: 'https://api.deepseek.com/chat/completions',
-    MODEL: 'deepseek-v4-pro',
+    MODEL: deepseek-v4-pro',
     STORAGE_KEY: 'deepseek_sessions'
 };
 
 // ============================================================
-//  状态
+//  数据管理
 // ============================================================
-let currentSessionId = null;
 let sessions = [];
+let currentSessionId = null;
 let isLoading = false;
 let isDark = false;
 
-// ⭐ 新增：功能开关状态（每个会话独立保存）
-let thinkingEnabled = false;
-let searchEnabled = false;
-
-// ============================================================
-//  DOM 引用
-// ============================================================
-const sidebar = document.getElementById('sidebar');
-const sidebarOverlay = document.getElementById('sidebarOverlay');
-const sidebarClose = document.getElementById('sidebarClose');
-const menuBtn = document.getElementById('menuBtn');
-const sessionList = document.getElementById('sessionList');
-const newChatBtn = document.getElementById('newChatBtn');
-const chatBox = document.getElementById('chatBox');
-const userInput = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
-const clearBtn = document.getElementById('clearBtn');
-const themeToggle = document.getElementById('themeToggle');
-const sidebarThemeBtn = document.getElementById('sidebarThemeBtn');
-const sessionTitle = document.getElementById('sessionTitle');
-const thinkingToggle = document.getElementById('thinkingToggle');
-const searchToggle = document.getElementById('searchToggle');
-// ============================================================
-//  数据管理
-// ============================================================
+// 加载本地数据
 function loadSessions() {
     try {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEY);
-        if (data) {
-            sessions = JSON.parse(data);
-             // ⭐ 兼容旧数据：给没有开关状态的会话补上默认值
-            sessions.forEach(s => {
-                if (s.thinking === undefined) s.thinking = false;
-                if (s.search === undefined) s.search = false;
-            });
-        } else {
-            // 初始化：创建一个默认会话
-            sessions = [{
-                id: generateId(),
-                name: '新对话',
-                messages: [
-                    { role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答简洁清晰，用中文。' }
-                ],
-                createdAt: Date.now()
-                thinking: false,  // ⭐ 新增
-                search: false     // ⭐ 新增
-            }];
-            saveSessions();
+        const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+        if (saved) {
+            sessions = JSON.parse(saved);
+            // 确保每个会话都有完整结构
+            sessions = sessions.filter(s => s.id && s.title && s.messages);
         }
     } catch (e) {
-        sessions = [{
-            id: generateId(),
-            name: '新对话',
-            messages: [{ role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答简洁清晰，用中文。' }],
-            createdAt: Date.now()
-            thinking: false,  // ⭐ 新增
-            search: false     // ⭐ 新增
-        }];
-        saveSessions();
+        sessions = [];
+    }
+    if (sessions.length === 0) {
+        createNewSession();
     }
 }
 
+// 保存到本地
 function saveSessions() {
-    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(sessions));
+    try {
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(sessions));
+    } catch (e) {
+        console.error('保存失败:', e);
+    }
 }
 
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
-
-// ============================================================
-//  会话操作
-// ============================================================
+// 创建新会话
 function createNewSession() {
-    const newSession = {
-        id: generateId(),
-        name: '新对话',
+    const session = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        title: '新对话',
         messages: [
             { role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答简洁清晰，用中文。' }
         ],
-        createdAt: Date.now()
-        thinking: false,  // ⭐ 新增
-        search: false     // ⭐ 新增
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     };
-    sessions.unshift(newSession);
+    sessions.unshift(session);
+    currentSessionId = session.id;
     saveSessions();
-    switchSession(newSession.id);
     renderSessionList();
-    closeSidebar();
+    renderChat();
+    updateUI();
+    return session;
 }
 
-function switchSession(sessionId) {
-    currentSessionId = sessionId;
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return;
-
-    // 更新标题
-    sessionTitle.textContent = session.name || '新对话';
-
-    // ⭐ 恢复该会话的开关状态
-    thinkingEnabled = session.thinking || false;
-    searchEnabled = session.search || false;
-    updateToggleUI();
-
-    // 渲染消息
-    renderMessages(session.messages);
-
-    // 更新列表高亮
-    renderSessionList();
-    saveSessions();
+// 获取当前会话
+function getCurrentSession() {
+    return sessions.find(s => s.id === currentSessionId) || sessions[0];
 }
 
-function deleteSession(sessionId, e) {
-    e.stopPropagation();
+// 删除会话
+function deleteSession(id) {
     if (sessions.length <= 1) {
         // 至少保留一个会话
-        showToast('至少保留一个对话');
+        clearChatHistory();
         return;
     }
-    if (!confirm('确定要删除这个对话吗？')) return;
-
-    sessions = sessions.filter(s => s.id !== sessionId);
+    sessions = sessions.filter(s => s.id !== id);
+    if (currentSessionId === id) {
+        currentSessionId = sessions[0].id;
+    }
     saveSessions();
-
-    if (currentSessionId === sessionId) {
-        // 切换到第一个会话
-        switchSession(sessions[0].id);
-    } else {
-        renderSessionList();
-    }
+    renderSessionList();
+    renderChat();
+    updateUI();
 }
 
-function renameSession(sessionId, newName) {
-    const session = sessions.find(s => s.id === sessionId);
-    if (session) {
-        session.name = newName.trim() || '新对话';
-        saveSessions();
-        if (currentSessionId === sessionId) {
-            sessionTitle.textContent = session.name;
-        }
-        renderSessionList();
-    }
-}
-
-function getCurrentSession() {
-    return sessions.find(s => s.id === currentSessionId);
-}
-
-// ============================================================
-//  开关UI控制
-// ============================================================
-function updateToggleUI() {
-    if (thinkingToggle) {
-        thinkingToggle.dataset.active = thinkingEnabled ? 'true' : 'false';
-    }
-    if (searchToggle) {
-        searchToggle.dataset.active = searchEnabled ? 'true' : 'false';
-    }
-}
-
-function toggleThinking() {
-    thinkingEnabled = !thinkingEnabled;
+// 清空当前会话历史
+function clearChatHistory() {
     const session = getCurrentSession();
     if (session) {
-        session.thinking = thinkingEnabled;
+        session.messages = [
+            { role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答简洁清晰，用中文。' }
+        ];
+        session.title = '新对话';
+        session.updatedAt = new Date().toISOString();
         saveSessions();
+        renderSessionList();
+        renderChat();
+        updateUI();
     }
-    updateToggleUI();
-    showToast(thinkingEnabled ? '🧠 深度思考已开启' : '🧠 深度思考已关闭');
 }
 
-function toggleSearch() {
-    searchEnabled = !searchEnabled;
-    const session = getCurrentSession();
-    if (session) {
-        session.search = searchEnabled;
-        saveSessions();
-    }
-    updateToggleUI();
-    showToast(searchEnabled ? '🌐 智能搜索已开启' : '🌐 智能搜索已关闭');
+// 清空所有会话
+function clearAllSessions() {
+    if (sessions.length === 0) return;
+    if (!confirm('确定要删除所有对话吗？此操作不可恢复！')) return;
+    sessions = [];
+    createNewSession();
+    renderSessionList();
+    renderChat();
+    updateUI();
 }
 
 // ============================================================
-//  渲染
+//  渲染：会话列表
 // ============================================================
 function renderSessionList() {
-    if (!sessionList) return;
-    sessionList.innerHTML = sessions.map(s => `
+    const list = document.getElementById('sessionList');
+    const count = document.getElementById('sessionCount');
+    
+    if (sessions.length === 0) {
+        list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light);font-size:14px;">暂无对话</div>';
+        count.textContent = '0 个对话';
+        return;
+    }
+
+    list.innerHTML = sessions.map(s => `
         <div class="session-item ${s.id === currentSessionId ? 'active' : ''}" data-id="${s.id}">
-            <span class="session-icon">💬</span>
-            <span class="session-name" data-id="${s.id}">${escapeHtml(s.name || '新对话')}</span>
-            <button class="session-delete" data-id="${s.id}">✕</button>
+            <span class="session-title-text">${escapeHtml(s.title || '新对话')}</span>
+            <button class="session-delete" data-id="${s.id}" title="删除">✕</button>
         </div>
     `).join('');
 
-    // 事件绑定：点击切换
-    sessionList.querySelectorAll('.session-item').forEach(item => {
+    count.textContent = `${sessions.length} 个对话`;
+
+    // 绑定点击事件（切换会话）
+    list.querySelectorAll('.session-item').forEach(item => {
         item.addEventListener('click', function(e) {
             if (e.target.closest('.session-delete')) return;
             const id = this.dataset.id;
             if (id && id !== currentSessionId) {
-                switchSession(id);
+                currentSessionId = id;
+                renderSessionList();
+                renderChat();
+                updateUI();
                 closeSidebar();
             }
         });
     });
 
-    // 事件绑定：双击重命名
-    sessionList.querySelectorAll('.session-name').forEach(nameEl => {
-        nameEl.addEventListener('dblclick', function(e) {
+    // 绑定删除事件
+    list.querySelectorAll('.session-delete').forEach(btn => {
+        btn.addEventListener('click', function(e) {
             e.stopPropagation();
             const id = this.dataset.id;
-            const session = sessions.find(s => s.id === id);
-            if (!session) return;
-            const newName = prompt('重命名对话：', session.name);
-            if (newName !== null) {
-                renameSession(id, newName);
-            }
-        });
-    });
-
-    // 事件绑定：删除
-    sessionList.querySelectorAll('.session-delete').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            const id = this.dataset.id;
-            deleteSession(id, e);
+            if (id) deleteSession(id);
         });
     });
 }
 
-function renderMessages(messages) {
-    chatBox.innerHTML = '';
-    // 过滤掉 system 消息
-    const userMessages = messages.filter(m => m.role !== 'system');
-
-    if (userMessages.length === 0) {
-        // 显示欢迎消息
+// ============================================================
+//  渲染：聊天内容
+// ============================================================
+function renderChat() {
+    const chatBox = document.getElementById('chatBox');
+    const session = getCurrentSession();
+    
+    if (!session || session.messages.length <= 1) {
+        // 显示欢迎页
         chatBox.innerHTML = `
             <div class="welcome-msg">
                 <div class="welcome-icon">👋</div>
                 <h2>你好，我是 DeepSeek</h2>
-                <p>随时为你解答问题，开始对话吧！</p>
+                <p>点击「＋ 新对话」开始聊天，所有记录自动保存</p>
             </div>
         `;
         return;
     }
 
-    userMessages.forEach(msg => {
-        const div = document.createElement('div');
-        div.className = `msg ${msg.role}`;
-        div.textContent = msg.content;
-        chatBox.appendChild(div);
+    let html = '';
+    const messages = session.messages.filter(m => m.role !== 'system');
+    
+    if (messages.length === 0) {
+        chatBox.innerHTML = `
+            <div class="welcome-msg">
+                <div class="welcome-icon">👋</div>
+                <h2>你好，我是 DeepSeek</h2>
+                <p>开始你的第一句话吧！</p>
+            </div>
+        `;
+        return;
+    }
+
+    messages.forEach(msg => {
+        const role = msg.role === 'user' ? 'user' : 'ai';
+        const content = escapeHtml(msg.content);
+        html += `<div class="msg ${role}">${content}</div>`;
     });
+
+    chatBox.innerHTML = html;
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// ============================================================
+//  辅助：HTML 转义
+// ============================================================
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -283,81 +214,65 @@ function escapeHtml(text) {
 //  核心：发送消息
 // ============================================================
 async function sendMessage() {
-    const text = userInput.value.trim();
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
     if (!text || isLoading) return;
 
     // 检查 API Key
     if (!CONFIG.API_KEY || CONFIG.API_KEY === 'sk-c2c7f7fdf13545da8656241acff333cb') {
-        appendMsg('⚠️ 请先在 script.js 中填入你的 DeepSeek API Key！', 'ai');
+        appendMessage('⚠️ 请先在 script.js 中填入你的 DeepSeek API Key！', 'ai');
         return;
     }
 
     const session = getCurrentSession();
     if (!session) return;
 
-    // 移除欢迎消息
-    const welcome = chatBox.querySelector('.welcome-msg');
-    if (welcome) welcome.remove();
-
-    // 显示用户消息
-    appendMsg(text, 'user');
-    userInput.value = '';
-    isLoading = true;
-    sendBtn.disabled = true;
-
-    // 加入历史
-    session.messages.push({ role: 'user', content: text });
-    saveSessions();
-
-    // 如果会话没有名字，用第一条消息命名
-    if (session.name === '新对话') {
-        const shortName = text.length > 20 ? text.slice(0, 20) + '...' : text;
-        session.name = shortName;
-        sessionTitle.textContent = session.name;
-        renderSessionList();
-        saveSessions();
+    // 如果只有系统消息，说明是空会话，先创建
+    if (session.messages.length <= 1) {
+        // 用用户的第一句话作为标题
+        session.title = text.length > 20 ? text.slice(0, 20) + '...' : text;
     }
 
-    // 创建 AI 占位消息
-    const aiMsgEl = createTypingMessage();
+    // 添加用户消息
+    session.messages.push({ role: 'user', content: text });
+    session.updatedAt = new Date().toISOString();
+    saveSessions();
+    
+    // 重新渲染
+    renderChat();
+    renderSessionList();
+    updateUI();
+    
+    input.value = '';
+    isLoading = true;
+    document.getElementById('sendBtn').disabled = true;
+
+    // 创建 AI 占位（打字动画）
+    const chatBox = document.getElementById('chatBox');
+    const aiPlaceholder = document.createElement('div');
+    aiPlaceholder.className = 'msg ai typing';
+    aiPlaceholder.innerHTML = `
+        <div class="typing-dots">
+            <span></span><span></span><span></span>
+        </div>
+    `;
+    chatBox.appendChild(aiPlaceholder);
+    chatBox.scrollTop = chatBox.scrollHeight;
 
     try {
-        // ============================================
-        // ⭐ 核心改动：根据开关状态构建请求
-        // ============================================
-        const requestBody = {
-            model: CONFIG.MODEL,
-            messages: session.messages,
-            stream: false,
-            temperature: 0.7,
-            max_tokens: 4096
-        };
-
-        // 如果开启了深度思考
-        if (thinkingEnabled) {
-            requestBody.reasoning_effort = "high";
-            requestBody.thinking = {
-                type: "enabled"
-            };
-        }
-
-        // 如果开启了智能搜索
-        if (searchEnabled) {
-            requestBody.tools = [{
-                type: "web_search",
-                search_config: {
-                    max_results: 3
-                }
-            }];
-        }
-
         const response = await fetch(CONFIG.API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${CONFIG.API_KEY}`
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                model: CONFIG.MODEL,
+                messages: session.messages,
+                stream: false,
+                temperature: 0.7,
+                max_tokens: 2048
+            })
         });
 
         if (!response.ok) {
@@ -368,87 +283,48 @@ async function sendMessage() {
         const data = await response.json();
         const reply = data.choices[0].message.content;
 
-        aiMsgEl.textContent = reply;
-        aiMsgEl.classList.remove('typing');
+        // 移除占位
+        aiPlaceholder.remove();
+
+        // 添加 AI 回复
         session.messages.push({ role: 'assistant', content: reply });
+        session.updatedAt = new Date().toISOString();
         saveSessions();
+        renderChat();
+        renderSessionList();
+        updateUI();
 
     } catch (error) {
-        aiMsgEl.textContent = '❌ ' + error.message;
-        aiMsgEl.classList.remove('typing');
+        aiPlaceholder.textContent = '❌ ' + error.message;
+        aiPlaceholder.classList.remove('typing');
+        aiPlaceholder.innerHTML = '❌ ' + escapeHtml(error.message);
         console.error('API Error:', error);
     }
 
     isLoading = false;
-    sendBtn.disabled = false;
-    chatBox.scrollTop = chatBox.scrollHeight;
+    document.getElementById('sendBtn').disabled = false;
 }
 
 // ============================================================
-//  辅助函数
+//  辅助：追加消息（外部调用）
 // ============================================================
-function appendMsg(text, role) {
+function appendMessage(text, role) {
+    const chatBox = document.getElementById('chatBox');
     const div = document.createElement('div');
     div.className = `msg ${role}`;
     div.textContent = text;
     chatBox.appendChild(div);
     chatBox.scrollTop = chatBox.scrollHeight;
-    return div;
-}
-
-function createTypingMessage() {
-    const div = document.createElement('div');
-    div.className = 'msg ai typing';
-    div.innerHTML = `
-        <div class="typing-dots">
-            <span></span><span></span><span></span>
-        </div>
-    `;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-    return div;
 }
 
 // ============================================================
-//  清空当前对话
+//  UI 更新
 // ============================================================
-function clearCurrentChat() {
-    if (isLoading) return;
+function updateUI() {
     const session = getCurrentSession();
-    if (!session) return;
-
-    // 保留 system 消息
-    const systemMsg = session.messages.find(m => m.role === 'system');
-    session.messages = systemMsg ? [systemMsg] : [{ role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答简洁清晰，用中文。' }];
-    saveSessions();
-    renderMessages(session.messages);
-    // 重置会话名称
-    session.name = '新对话';
-    sessionTitle.textContent = '新对话';
-    renderSessionList();
-    showToast('已清空当前对话');
-}
-
-// ============================================================
-//  侧边栏控制
-// ============================================================
-function openSidebar() {
-    sidebar.classList.add('open');
-    sidebarOverlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeSidebar() {
-    sidebar.classList.remove('open');
-    sidebarOverlay.classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-function toggleSidebar() {
-    if (sidebar.classList.contains('open')) {
-        closeSidebar();
-    } else {
-        openSidebar();
+    const titleEl = document.getElementById('sessionTitle');
+    if (session && titleEl) {
+        titleEl.textContent = session.title || '新对话';
     }
 }
 
@@ -458,9 +334,10 @@ function toggleSidebar() {
 function toggleTheme() {
     isDark = !isDark;
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
-    const icon = isDark ? '☀️' : '🌙';
-    themeToggle.textContent = icon;
-    sidebarThemeBtn.textContent = isDark ? '☀️ 切换主题' : '🌙 切换主题';
+    const btns = document.querySelectorAll('.header-theme-btn, .sidebar-theme-btn');
+    btns.forEach(btn => {
+        if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+    });
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
 }
 
@@ -469,103 +346,70 @@ function loadThemePreference() {
     if (saved === 'dark') {
         isDark = true;
         document.documentElement.setAttribute('data-theme', 'dark');
-        themeToggle.textContent = '☀️';
-        sidebarThemeBtn.textContent = '☀️ 切换主题';
+        document.querySelectorAll('.header-theme-btn, .sidebar-theme-btn').forEach(btn => {
+            if (btn) btn.textContent = '☀️';
+        });
     }
 }
 
 // ============================================================
-//  Toast 提示（简易）
+//  侧边栏（移动端）
 // ============================================================
-function showToast(text) {
-    const existing = document.querySelector('.toast-msg');
-    if (existing) existing.remove();
+function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebarOverlay').classList.add('show');
+}
 
-    const div = document.createElement('div');
-    div.className = 'toast-msg';
-    div.textContent = text;
-    Object.assign(div.style, {
-        position: 'fixed',
-        bottom: '80px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        background: 'rgba(0,0,0,0.75)',
-        color: '#fff',
-        padding: '10px 24px',
-        borderRadius: '12px',
-        fontSize: '14px',
-        zIndex: '9999',
-        animation: 'fadeUp 0.3s ease',
-        backdropFilter: 'blur(8px)',
-        maxWidth: '90%',
-        textAlign: 'center'
-    });
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 2000);
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
 }
 
 // ============================================================
 //  事件绑定
 // ============================================================
-sendBtn.addEventListener('click', sendMessage);
-userInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
-menuBtn.addEventListener('click', toggleSidebar);
-sidebarClose.addEventListener('click', closeSidebar);
-sidebarOverlay.addEventListener('click', closeSidebar);
-newChatBtn.addEventListener('click', createNewSession);
-clearBtn.addEventListener('click', clearCurrentChat);
-themeToggle.addEventListener('click', toggleTheme);
-sidebarThemeBtn.addEventListener('click', toggleTheme);
-// ⭐ 新增：开关按钮事件
-if (thinkingToggle) {
-    thinkingToggle.addEventListener('click', toggleThinking);
-}
-if (searchToggle) {
-    searchToggle.addEventListener('click', toggleSearch);
-}
+document.addEventListener('DOMContentLoaded', function() {
+    // 加载数据
+    loadSessions();
+    loadThemePreference();
+    renderSessionList();
+    renderChat();
+    updateUI();
 
-// 键盘快捷键：Ctrl+K 新建对话
-document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
+    // 发送
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('userInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // 新对话
+    document.getElementById('newChatBtn').addEventListener('click', function() {
         createNewSession();
+        renderSessionList();
+        renderChat();
+        updateUI();
+        closeSidebar();
+    });
+
+    // 清空当前
+    document.getElementById('sidebarClearBtn').addEventListener('click', clearAllSessions);
+
+    // 主题切换（两个按钮）
+    document.getElementById('headerThemeBtn').addEventListener('click', toggleTheme);
+    document.getElementById('sidebarThemeBtn').addEventListener('click', toggleTheme);
+
+    // 菜单切换
+    document.getElementById('menuToggle').addEventListener('click', openSidebar);
+    document.getElementById('sidebarOverlay').addEventListener('click', closeSidebar);
+
+    // 自动聚焦
+    if (window.innerWidth > 600) {
+        document.getElementById('userInput').focus();
     }
+
+    console.log('🧠 DeepSeek 助手已启动！');
+    console.log(`📚 已加载 ${sessions.length} 个会话`);
 });
-
-// ============================================================
-//  初始化
-// ============================================================
-loadThemePreference();
-loadSessions();
-
-// 如果有会话，切换到第一个
-if (sessions.length > 0) {
-    switchSession(sessions[0].id);
-} else {
-    // 兜底
-    createNewSession();
-}
-
-// ⭐ 确保开关UI与当前会话同步（switchSession 里已经做了，这里保险再调用一次）
-updateToggleUI();
-
-// 桌面端聚焦输入框
-if (window.innerWidth > 768) {
-    userInput.focus();
-}
-
-console.log('🧠 DeepSeek 助手已启动！多会话管理已开启');
-console.log(`📚 当前会话数: ${sessions.length}`);
-
-// 桌面端聚焦输入框
-if (window.innerWidth > 768) {
-    userInput.focus();
-}
-
-console.log('🧠 DeepSeek 助手已启动！多会话管理已开启');
-console.log(`📚 当前会话数: ${sessions.length}`);

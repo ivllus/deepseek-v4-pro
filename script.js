@@ -1,33 +1,48 @@
-const chatEl = document.getElementById('chat');
-const input = document.getElementById('msgInput');
-const keyInput = document.getElementById('apiKeyInput');
-
+const chatEl  = document.getElementById('chat');
+const input   = document.getElementById('msgInput');
+const keyIn   = document.getElementById('apiKeyInput');
 let history = [];
 
-function appendMsg(text, cls) {
+function addBubble(text, cls) {
   const d = document.createElement('div');
   d.className = 'msg ' + cls;
   d.textContent = text;
   chatEl.appendChild(d);
   chatEl.scrollTop = chatEl.scrollHeight;
+  return d;
+}
+
+function showTyping() {
+  const d = document.createElement('div');
+  d.className = 'typing-indicator';
+  d.id = 'typing';
+  d.innerHTML = '<span></span><span></span><span></span>';
+  chatEl.appendChild(d);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
 }
 
 async function send() {
-  const apiKey = keyInput.value.trim();
-  const text = input.value.trim();
-  if (!apiKey) return alert('请先填入 API Key！');
-  if (!text) return;
+  const key = keyIn.value.trim();
+  const txt = input.value.trim();
+  if (!key) return alert('请先填入 API Key！');
+  if (!txt) return;
 
-  appendMsg(text, 'user');
-  history.push({ role: 'user', content: text });
+  addBubble(txt, 'user');
+  history.push({ role: 'user', content: txt });
   input.value = '';
+  showTyping();
 
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
+        'Authorization': 'Bearer ' + key
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
@@ -35,20 +50,19 @@ async function send() {
         temperature: 0.7
       })
     });
-
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error?.message || '请求失败 ' + res.status);
+      throw new Error(err.error?.message || 'HTTP ' + res.status);
     }
-
     const data = await res.json();
     const reply = data.choices[0].message.content;
     history.push({ role: 'assistant', content: reply });
-    appendMsg(reply, 'ai');
+    hideTyping();
+    addBubble(reply, 'ai');
   } catch (e) {
-    appendMsg('❌ ' + e.message, 'ai');
+    hideTyping();
+    addBubble('❌ ' + e.message, 'ai');
   }
 }
 
-// 回车发送
 input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });

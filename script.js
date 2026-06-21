@@ -1,5 +1,5 @@
 const CONFIG = {
-    API_KEY: 'sk-c2c7f7fdf13545da8656241acff333cb',
+    API_KEY: 'sk-你的DeepSeek_API_Key',
     API_URL: 'https://api.deepseek.com/chat/completions',
     MODEL: 'deepseek-chat',
     STORAGE_KEY: 'deepseek_sessions'
@@ -12,7 +12,7 @@ let isDark = false;
 
 function loadSessions() {
     try {
-        const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+        var saved = localStorage.getItem(CONFIG.STORAGE_KEY);
         if (saved) {
             sessions = JSON.parse(saved);
             sessions = sessions.filter(function(s) { return s.id && s.messages; });
@@ -31,7 +31,7 @@ function createNewSession() {
     var session = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
         title: '新对话',
-        messages: [{ role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答简洁清晰，用中文。' }],
+        messages: [{ role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答必须用中文，并且要分段呈现。每段之间空一行。用换行符分隔不同段落。重要内容用【】或**加粗**标注。回复要清晰易读，方便手机阅读。' }],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
@@ -60,7 +60,7 @@ function deleteSession(id) {
 function clearChatHistory() {
     var s = getCurrentSession();
     if (s) {
-        s.messages = [{ role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答简洁清晰，用中文。' }];
+        s.messages = [{ role: 'system', content: '你是一个友好、专业、乐于助人的AI助手。回答必须用中文，并且要分段呈现。每段之间空一行。用换行符分隔不同段落。重要内容用【】或**加粗**标注。回复要清晰易读，方便手机阅读。' }];
         s.title = '新对话';
         saveSessions();
         renderAll();
@@ -120,6 +120,7 @@ function renderSessionList() {
     }
 }
 
+// ===== 【核心修改】渲染聊天，支持换行 =====
 function renderChat() {
     var box = document.getElementById('chatBox');
     var s = getCurrentSession();
@@ -132,7 +133,9 @@ function renderChat() {
         var m = s.messages[i];
         if (m.role === 'system') continue;
         var cls = (m.role === 'user') ? 'user' : 'ai';
-        html += '<div class="msg ' + cls + '">' + escapeHtml(m.content) + '</div>';
+        // 🔥 关键：把 \n 换成 <br>，让文字分段
+        var contentWithBreaks = escapeHtml(m.content).replace(/\n/g, '<br>');
+        html += '<div class="msg ' + cls + '">' + contentWithBreaks + '</div>';
     }
     box.innerHTML = html;
     box.scrollTop = box.scrollHeight;
@@ -151,6 +154,7 @@ function escapeHtml(text) {
     return d.innerHTML;
 }
 
+// ===== 【核心修改】发送消息，回复自动换行 =====
 function sendMessage() {
     var input = document.getElementById('userInput');
     var text = input.value.trim();
@@ -207,8 +211,10 @@ function sendMessage() {
     .then(function(data) {
         var reply = data.choices[0].message.content;
         placeholder.remove();
+        // 🔥 存入历史（原文）
         s.messages.push({ role: 'assistant', content: reply });
         saveSessions();
+        // 🔥 重新渲染（自动处理换行）
         renderAll();
     })
     .catch(function(e) {

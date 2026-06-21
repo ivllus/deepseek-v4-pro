@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>DeepSeek Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <input type="password" id="apiKeyInput" placeholder="粘贴你的 DeepSeek API Key (sk-...)" autocomplete="off">
+  </div>
+  <div id="chat"></div>
+  <div class="input-area">
+    <input type="text" id="msgInput" placeholder="输入消息…" autofocus>
+    <button onclick="send()">发送</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

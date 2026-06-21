@@ -719,3 +719,131 @@ body {
     text-align: center;
     pointer-events: none;
 }
+
+/* ============================================================
+   功能开关按钮（输入区上方）
+   ============================================================ */
+.feature-toggles {
+    max-width: 820px;
+    margin: 0 auto 10px auto;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 0 4px;
+}
+
+.toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px 6px 10px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.toggle-btn .toggle-icon {
+    font-size: 15px;
+}
+
+.toggle-btn .toggle-label {
+    font-size: 13px;
+}
+
+.toggle-btn .toggle-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-light);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+/* 激活状态 - 深度思考 */
+.toggle-btn[data-active="true"]#thinkingToggle {
+    border-color: #7c3aed;
+    background: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.15);
+}
+.toggle-btn[data-active="true"]#thinkingToggle .toggle-status {
+    background: #7c3aed;
+    box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
+}
+
+/* 激活状态 - 智能搜索 */
+.toggle-btn[data-active="true"]#searchToggle {
+    border-color: #0ea5e9;
+    background: rgba(14, 165, 233, 0.12);
+    color: #0ea5e9;
+    box-shadow: 0 0 12px rgba(14, 165, 233, 0.15);
+}
+.toggle-btn[data-active="true"]#searchToggle .toggle-status {
+    background: #0ea5e9;
+    box-shadow: 0 0 8px rgba(14, 165, 233, 0.4);
+}
+
+/* 悬停效果 */
+.toggle-btn:hover {
+    border-color: var(--text-secondary);
+    transform: translateY(-1px);
+}
+.toggle-btn[data-active="true"]:hover {
+    transform: translateY(-1px);
+}
+
+/* 点击效果 */
+.toggle-btn:active {
+    transform: scale(0.96);
+}
+
+/* 暗色主题适配 */
+[data-theme="dark"] .toggle-btn[data-active="true"]#thinkingToggle {
+    background: rgba(124, 58, 237, 0.2);
+}
+[data-theme="dark"] .toggle-btn[data-active="true"]#searchToggle {
+    background: rgba(14, 165, 233, 0.2);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .feature-toggles {
+        gap: 8px;
+        margin-bottom: 8px;
+        padding: 0 2px;
+    }
+    .toggle-btn {
+        padding: 5px 12px 5px 8px;
+        font-size: 12px;
+    }
+    .toggle-btn .toggle-icon {
+        font-size: 13px;
+    }
+    .toggle-btn .toggle-label {
+        font-size: 12px;
+    }
+    .toggle-btn .toggle-status {
+        width: 6px;
+        height: 6px;
+    }
+}
+
+@media (max-width: 380px) {
+    .toggle-btn {
+        padding: 4px 10px 4px 6px;
+        font-size: 11px;
+    }
+    .toggle-btn .toggle-icon {
+        font-size: 12px;
+    }
+    .toggle-btn .toggle-label {
+        font-size: 11px;
+    }
+}

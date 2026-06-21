@@ -5,7 +5,7 @@ const CONFIG = {
     // ⚠️ 替换成你的 DeepSeek API Key
     API_KEY: 'sk-c2c7f7fdf13545da8656241acff333cb',
     API_URL: 'https://api.deepseek.com/chat/completions',
-    MODEL: 'deepseek-chat',
+    MODEL: 'deepseek-v4-pro',
     STORAGE_KEY: 'deepseek_sessions'
 };
 
@@ -276,9 +276,22 @@ async function sendMessage() {
             body: JSON.stringify({
                 model: CONFIG.MODEL,
                 messages: session.messages,
+                // 启用深度思考并设置强度
+                reasoning_effort: "high", 
+                extra_body: {
+                    "thinking": {
+                        "type": "enabled"
+                    }
+                },
+                 // 声明联网搜索工具
+                 tools: [{
+                     "type": "web_search",
+                     "search_config": {
+                         "max_results": 3 // 可选：控制返回的搜索结果数量
+                     }
+                  }],
                 stream: false,
-                temperature: 0.7,
-                max_tokens: 2048
+                max_tokens: 4096
             })
         });
 

@@ -2,7 +2,7 @@
 //  配置
 // ============================================================
 const CONFIG = {
-    API_KEY: 'sk-你的DeepSeek_API_Key',
+    API_KEY: 'sk-c2c7f7fdf13545da8656241acff333cb',
     API_URL: 'https://api.deepseek.com/chat/completions',
     MODEL: deepseek-v4-pro',
     STORAGE_KEY: 'deepseek_sessions'

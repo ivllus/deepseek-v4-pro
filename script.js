@@ -2,7 +2,7 @@
 //  配置
 // ============================================================
 const CONFIG = {
-    API_KEY: 'sk-c2c7f7fdf13545da8656241acff333cb',
+    API_KEY: 'sk-你的DeepSeek_API_Key',
     API_URL: 'https://api.deepseek.com/chat/completions',
     MODEL: deepseek-v4-pro',
     STORAGE_KEY: 'deepseek_sessions'
@@ -219,7 +219,7 @@ async function sendMessage() {
     if (!text || isLoading) return;
 
     // 检查 API Key
-    if (!CONFIG.API_KEY || CONFIG.API_KEY === 'sk-c2c7f7fdf13545da8656241acff333cb') {
+    if (!CONFIG.API_KEY || CONFIG.API_KEY === 'sk-你的DeepSeek_API_Key') {
         appendMessage('⚠️ 请先在 script.js 中填入你的 DeepSeek API Key！', 'ai');
         return;
     }

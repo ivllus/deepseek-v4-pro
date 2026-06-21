@@ -603,4 +603,29 @@ body {
     .session-title {
         max-width: 70px;
     }
+
+    /* ===== 让 AI 回复的文字更易读 ===== */
+    .msg.ai {
+       line-height: 1.9;
+       font-size: 15px;
+       white-space: pre-wrap;
+       word-break: break-word;
+     }
+
+    .msg.ai br {
+        display: block;
+        content: '';
+        margin: 6px 0;
+     }
+
+    /* 重点内容高亮 */
+    .msg.ai strong,
+    .msg.ai b {
+        color: #1a73e8;
+     }
+
+     [data-theme="dark"] .msg.ai strong,
+     [data-theme="dark"] .msg.ai b {
+         color: #6ab0ff;
+     }
 }
